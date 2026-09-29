@@ -68,7 +68,14 @@ type Opts struct {
 	IdleTimeout time.Duration
 	HardTimeout time.Duration
 	// CodexSandbox selects the codex --sandbox policy; empty means read-only.
-	CodexSandbox   string
+	CodexSandbox string
+	// KimiBin is the kimi binary. The bare name, or empty, searches PATH and then kimi's own install dir;
+	// anything else is run as given.
+	KimiBin string
+	// KimiIdleTimeout replaces IdleTimeout for kimi alone. Kimi writes nothing on any channel while one
+	// model step is generating, and a step runs for minutes, so the shared timeout would kill healthy
+	// runs. Zero disables kimi's watchdog, the same as a zero IdleTimeout does for the others.
+	KimiIdleTimeout time.Duration
 	WorkDir        string
 	PreserveAPIKey bool
 	Clock          Clock

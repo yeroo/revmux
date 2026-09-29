@@ -101,7 +101,7 @@ func (c *Codex) Run(ctx context.Context, req Request, sink EventSink) (Result, e
 	if err != nil {
 		return res, err
 	}
-	if out, exErr := c.extract(res.Raw); exErr == nil {
+	if out, exErr := extractJSON(res.Raw); exErr == nil {
 		res.StructuredOutput = out
 	}
 	return c.classify(res, errs.diag, sink)
@@ -154,10 +154,10 @@ func (c *Codex) drain(ctx context.Context, r io.Reader, sink EventSink) Result {
 	return Result{}
 }
 
-// extract pulls the answer out of output that may carry prose around it. Decoding starts at each brace
-// in turn, and an incomplete tail ends the search rather than continuing into it: a nested object inside
-// a truncated answer would otherwise come back looking like the whole answer.
-func (c *Codex) extract(raw string) (json.RawMessage, error) {
+// extractJSON pulls the answer out of output that may carry prose around it. Decoding starts at each
+// brace in turn, and an incomplete tail ends the search rather than continuing into it: a nested object
+// inside a truncated answer would otherwise come back looking like the whole answer.
+func extractJSON(raw string) (json.RawMessage, error) {
 	for i, ch := range raw {
 		if ch != '{' {
 			continue
@@ -171,7 +171,7 @@ func (c *Codex) extract(raw string) (json.RawMessage, error) {
 			break
 		}
 	}
-	return nil, errors.New("no JSON object in codex output")
+	return nil, errors.New("no JSON object in output")
 }
 
 // classify tiers a failed run: transient hiccup, quota, or a hard diagnostic. Patterns are consulted

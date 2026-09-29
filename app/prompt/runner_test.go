@@ -21,6 +21,11 @@ func TestParseRunner(t *testing.T) {
 		// split on the first slash, so a model whose own name carries one arrives intact
 		{"model containing a slash", "codex/vendor/model-1", Runner{Executor: "codex", Model: "vendor/model-1"}},
 		{"model containing a dot and dashes", "codex/gpt-5.6-sol", Runner{Executor: "codex", Model: "gpt-5.6-sol"}},
+		{"kimi alone", "kimi", Runner{Executor: "kimi"}},
+		// kimi's own aliases carry a slash, and only the first one separates the binary
+		{"kimi alias", "kimi/kimi-code/kimi-for-coding", Runner{Executor: "kimi", Model: "kimi-code/kimi-for-coding"}},
+		{"kimi alias with an effort", "kimi/kimi-code/kimi-for-coding:high",
+			Runner{Executor: "kimi", Model: "kimi-code/kimi-for-coding", Effort: "high"}},
 	}
 
 	for _, tt := range tests {

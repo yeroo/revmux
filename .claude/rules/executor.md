@@ -242,10 +242,10 @@ failing process to have something to order against. The `fail` helper mode exist
 
 ### Shared base, thin executors
 
-`Claude` and `Codex` both need the same run loop, idle watchdog, process-group teardown and line reader.
+`Claude`, `Codex` and `Kimi` all need the same run loop, idle watchdog, process-group teardown and line reader.
 Duplicating that gives two near-identical `Run` bodies, which `dupl` will fail in lint.
 
-Put the shared machinery on an unexported `proc` struct that both embed.
+Put the shared machinery on an unexported `proc` struct that each embeds.
 Each executor supplies only its own `args()` and its own output parsing.
 Model and effort belong on the **per-run request**, not on construction-time options —
 a single executor instance has to serve roster entries with different models.
@@ -365,9 +365,76 @@ Codex is a peer executor, not a special case in the pipeline — but the executo
   The check ignores project trust, as verified in Codex 0.146.0's
   [`exec-lib.rs` (`codex-rs/exec/src/lib.rs`)](https://github.com/openai/codex/blob/rust-v0.146.0/codex-rs/exec/src/lib.rs#L790-L799).
 
+### Kimi differences
+
+Measured against Kimi Code CLI 2.1.1 on 2026-09-29, from its print-mode emitter (`PromptJsonWriter` and
+`dispatchNativeEvent` inside the bundled `kimi.exe`, `grep -a -n PromptJsonWriter` finds them), real failed
+runs, and the session logs of real successful ones on the recording machine.
+No successful stream could be recorded while the account was over its usage limit, which is why
+`testdata/kimi-clean.jsonl` is the one hand-built fixture and `testdata/README.md` says so.
+
+- **The prompt goes in argv, because print mode has no other input.** `kimi -p <prompt>` is the only way
+  in; a blank one is refused with `Prompt cannot be empty.` `runSpec.promptInArgv` leaves stdin empty, and
+  kimi was verified exiting normally on an empty stdin rather than waiting on it.
+  **Argv survives the round trip intact on Windows**, verified directly: a 20,011-character prompt holding
+  double quotes, lone and trailing backslashes, `\"`, backticks, tabs, newlines, `%VAR%`, `^`, `&`, `|`
+  and non-ASCII text went through Go's `exec.Command` and was recorded by kimi, in the session's
+  `wire.jsonl` `turn.prompt` record, byte for byte identical. A quota-failed run still writes that record,
+  so this can be re-checked without spending anything.
+  **Windows caps the whole command line at 32,767 UTF-16 units**, and CreateProcess reports going over as
+  an opaque "filename or extension is too long". `checkWindowsCmdLine` measures the line the way
+  `os/exec` builds it and refuses it before start, naming both numbers. A finder prompt is far below it,
+  since composition embeds paths rather than content; a stage prompt inlines every finding and is not,
+  which is why the shipped kimi profiles keep synthesis and verify on claude.
+- **Never pass `--auto`, `--yolo` or `--plan`.** Print mode sets permission mode `auto` itself, and the
+  CLI refuses `--prompt` beside any of the three. There is no tool allowlist flag, so a kimi reviewer keeps
+  its edit and subagent tools: the read-only guarantee rests on the prompt alone, as it does for claude.
+- **stream-json is OpenAI-message-shaped JSON lines**:
+  `{"role":"meta","type":"system.version"}` first, before any model call;
+  `{"role":"assistant","content":…,"tool_calls":[{"function":{"name","arguments"}}]}` once per model step;
+  `{"role":"tool","tool_call_id","content"}` per tool result;
+  `{"role":"meta","type":"turn.step.retrying",…}` when kimi retries a step itself;
+  `{"role":"meta","type":"session.resume_hint"}` last on success.
+  There is no result object, no usage and no model, so `ActualModel` and `Tokens` stay empty rather than
+  estimated. Both exist only in the session's `wire.jsonl`, whose directory is named by the last line.
+  The version banner must emit nothing: it prints before any model call, and an output-shaped event there
+  releases the stagger gate on a process that has done nothing.
+- **One model step is silent on every channel kimi writes, and that is what `kimi-idle-timeout` is for.**
+  The writer buffers a step's text and tool calls and flushes them when the step ends; thinking deltas are
+  dropped outright (`writeThinkingDelta() {}`); stderr carries only tool progress text; and `wire.jsonl`
+  records thinking and text as whole blocks at step end too, so tailing it would not help.
+  Measured over 159 real steps (`llm.request` to its `usage.record` in `wire.jsonl`, at
+  `thinkingEffort: max`): median 11s, 90th percentile 40s, and the longest 116s, 156s, 212s, 283s and 326s.
+  The long ones are the steps that write a lot, which is exactly a finder's last step, so the shared 2m
+  timeout kills the answer while it is being written and the one retry meets the same wall.
+  `NewKimi` therefore arms the watchdog from `Opts.KimiIdleTimeout` (6m) in place of `IdleTimeout`.
+  The real fix is `kimi acp`, which streams thought and message chunks over JSON-RPC; it is a different
+  protocol and has not been built.
+- **The last assistant message is not reliably the answer.** A hook result is written as an assistant
+  line, and after the main turn completes print mode drains background tasks and may run further turns
+  before it exits, each writing assistant lines of its own. `kimiAnswer` walks the messages last to first
+  and takes the first object carrying every top-level key the request's schema requires, falling back to
+  the last message that decodes at all so the pipeline's own shape check names the mismatch.
+  Each message is extracted on its own, never concatenated: an earlier status line holding a brace would
+  otherwise be read as the answer.
+- **Effort has no flag.** A model's supported efforts are declared in `~/.kimi-code/config.toml` and set
+  only there. A kimi runner's effort is accepted, reported once as ignored through `EventInfo`, and never
+  passed. Neither shipped kimi profile names one: both put kimi in the top-level `model:` and name claude
+  per entry and per stage, since an effort a kimi entry inherits from a claude `model:` is recorded in
+  `manifest.json` and the report as if kimi had run at it.
+- **Failure lands on stderr with only the banner on stdout.** A usage-limit run exits 1 with
+  `error: failed to run prompt: provider.auth_error: 403 You've reached your 5-hour usage limit. …`.
+  Tiering reads the last `error:` line alone — stdout is structured, so there is no prose tail to consult,
+  and a finding that discusses a 503 must not be read as one. The one retry the pipeline makes cannot
+  succeed against a five-hour limit; it is still reported as a limit rather than as anything else.
+- The binary is `kimi-bin` when it names anything but the bare `kimi`, then `kimi` on `PATH`, then
+  `~/.kimi-code/bin/kimi[.exe]`, where the installer writes it without always adding it to `PATH`.
+  `preflight.sh` resolves it the same way, or it would report a working install as missing.
+
 ### Error and limit patterns
 
-claude gets its rate-limit signal from the typed `rate_limit_event`, so string matching is only needed for codex.
+claude gets its rate-limit signal from the typed `rate_limit_event`, so string matching is only needed for codex
+and kimi.
 Where patterns are used, tier them: **retry → limit → error**.
 
 - Retry tier covers transient server hiccups: `API Error: 529`, `502`, `503`, `504`.

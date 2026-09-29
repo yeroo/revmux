@@ -575,3 +575,27 @@ func (b *syncBuffer) isClosed() bool {
 	defer b.mu.Unlock()
 	return b.closed
 }
+
+// TestArchivedPrompt pins each executor to the suffix its process actually receives. It walks the
+// vocabulary the prompt tree validates against, so an executor added there without a case here panics
+// in this test rather than archiving claude's narration contract beside a run that never received it.
+func TestArchivedPrompt(t *testing.T) {
+	schema := finding.FinderSchema()
+	want := map[string]string{
+		"":             "composed" + executor.ClaudeNarrationContract(schema),
+		executorClaude: "composed" + executor.ClaudeNarrationContract(schema),
+		executorCodex:  "composed" + executor.CodexOutputContract(schema),
+		executorKimi:   "composed" + executor.KimiOutputContract(schema),
+	}
+	for _, exec := range prompt.Executors() {
+		t.Run(exec, func(t *testing.T) {
+			expected, ok := want[exec]
+			require.True(t, ok, "executor %q has no expected archived prompt", exec)
+			assert.Equal(t, expected, archivedPrompt(exec, "composed", schema))
+		})
+	}
+	assert.Equal(t, want[""], archivedPrompt("", "composed", schema), "an unset executor runs claude")
+	assert.NotEqual(t, want[executorClaude], want[executorKimi], "kimi is not handed claude's contract")
+	assert.Panics(t, func() { archivedPrompt("gemini", "composed", schema) },
+		"an executor with no case is a bug to surface, not a reason to archive claude's suffix")
+}

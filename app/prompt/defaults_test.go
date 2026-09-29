@@ -65,8 +65,9 @@ func TestDefaults_EveryProfileResolvesItsRoster(t *testing.T) {
 	set, err := Load(LoadOpts{})
 	require.NoError(t, err)
 	known := set.LensNames()
-	require.Len(t, set.ProfileNames(), 8,
-		"the shipped set is comprehensive, focused, final, claude-only, codex-only, grill-me, triage and expert")
+	require.Len(t, set.ProfileNames(), 10,
+		"the shipped set is comprehensive, focused, final, claude-only, codex-only, grill-me, triage, expert, "+
+			"kimi-mixed and kimi-only")
 
 	for _, name := range set.ProfileNames() {
 		p, err := set.Profile(name)
@@ -83,8 +84,13 @@ func TestDefaults_EveryProfileResolvesItsRoster(t *testing.T) {
 			colors[spec.Color] = spec.Name
 			assert.NotEmpty(t, spec.Model, "%s/%s: a roster entry with no model runs on whatever the binary defaults to",
 				name, spec.Name)
-			assert.NotEmpty(t, spec.Effort, "%s/%s: effort must resolve from the profile when the entry omits it",
-				name, spec.Name)
+			// kimi takes its effort from its own config.toml and has no flag for one, so a shipped kimi entry
+			// naming or inheriting an effort would record one in the archive that the run never applied —
+			// which is why both kimi profiles put kimi in the top-level model rather than under a claude one
+			if spec.Executor != "kimi" {
+				assert.NotEmpty(t, spec.Effort, "%s/%s: effort must resolve from the profile when the entry omits it",
+					name, spec.Name)
+			}
 			for _, l := range spec.Lenses {
 				assert.Contains(t, known, l, "%s/%s: unknown lens %s", name, spec.Name, l)
 			}
@@ -454,4 +460,46 @@ func TestDefaults_WhatNotToReportContract(t *testing.T) {
 	assert.Contains(t, section, "reviewing a change: a defect on a line it did not touch")
 	assert.Contains(t, section, "reviewing a proposal: a detail it deliberately leaves to implementation")
 	assert.Contains(t, section, "Pre-existing problems are the one exception")
+}
+
+// TestDefaults_KimiProfiles pins the two kimi profiles to the shapes they exist to compare: kimi-mixed
+// against comprehensive with kimi in two claude seats, and kimi-only against claude-only with the stages
+// held on claude, so only the finders differ between the two runs.
+func TestDefaults_KimiProfiles(t *testing.T) {
+	set, err := Load(LoadOpts{})
+	require.NoError(t, err)
+	const kimiModel = "kimi-code/kimi-for-coding"
+
+	runners := func(t *testing.T, name string) map[string]string {
+		t.Helper()
+		p, err := set.Profile(name)
+		require.NoError(t, err)
+		specs, err := p.Roster(nil, set.LensNames())
+		require.NoError(t, err)
+		out := map[string]string{}
+		for _, s := range specs {
+			out[s.Name] = s.Executor + "/" + s.Model + ":" + s.Effort
+		}
+		for _, stage := range []string{"synthesis", "verify"} {
+			st, err := p.Stage(set, stage)
+			require.NoError(t, err)
+			out[stage] = st.Executor + "/" + st.Model + ":" + st.Effort
+		}
+		return out
+	}
+
+	// no effort on a kimi entry: one would be recorded in manifest.json and the report while kimi ran
+	// whatever its own config.toml says
+	assert.Equal(t, map[string]string{
+		"bugs+impl": "kimi/" + kimiModel + ":", "adversarial": "kimi/" + kimiModel + ":",
+		"arch+quality": "claude/opus:high", "docs+tests": "claude/opus:high",
+		"synthesis": "claude/opus:high", "verify": "claude/opus:high",
+	}, runners(t, "kimi-mixed"))
+
+	assert.Equal(t, map[string]string{
+		"bugs+impl": "kimi/" + kimiModel + ":", "adversarial": "kimi/" + kimiModel + ":",
+		"arch+quality": "kimi/" + kimiModel + ":", "docs+tests": "kimi/" + kimiModel + ":",
+		"synthesis": "claude/opus:high", "verify": "claude/opus:high",
+	}, runners(t, "kimi-only"), "the stages stay on claude: a stage prompt inlines every finding, and kimi takes "+
+		"its prompt in argv, which Windows caps at 32767 characters")
 }

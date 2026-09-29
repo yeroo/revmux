@@ -249,7 +249,8 @@ func (v *verifier) apply(g verifyGroup, raw json.RawMessage) ([]finding.Finding,
 }
 
 // rank orders the severity vocabulary so a change between two can be read as a direction. An
-// unrecognized value ranks with minor, since the codex path has no schema enforcing the vocabulary.
+// unrecognized value ranks with minor, since the codex and kimi paths have no schema enforcing the
+// vocabulary.
 func (v *verifier) rank(s finding.Severity) int {
 	switch s {
 	case finding.Critical:
@@ -401,8 +402,8 @@ func (v *verifier) unverified(rep finding.Report) finding.Report {
 	return rep
 }
 
-// known reports whether the model answered with a verdict from the enum. The codex path has no
-// schema to enforce one, so an unrecognized word must not reach the report as if it were a judgment.
+// known reports whether the model answered with a verdict from the enum. The codex and kimi paths have
+// no schema to enforce one, so an unrecognized word must not reach the report as if it were a judgment.
 func (d verdict) known() bool {
 	switch d.Verdict {
 	case finding.Confirmed, finding.Refined, finding.Rejected, finding.Immaterial, finding.PreExisting:

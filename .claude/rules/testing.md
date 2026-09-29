@@ -37,8 +37,15 @@ The supervisor's behavior is defined by these, so they are written before the co
   forwarding, the model read-back and the diagnostic gate are tested against.
   The single capture prints each header line once and so cannot exercise the dedup at all —
   the doubled-banner fixture is derived from it, like every other derivation here.
+- **kimi quota** — `kimi-quota.jsonl` and `kimi-quota.err.txt`, stdout and stderr of one live run that
+  failed on the account's usage limit, the home path in its log line scrubbed. The stalling kimi stream
+  is its stdout, which is the version banner and nothing else.
+- **kimi clean** — `kimi-clean.jsonl`, **the one hand-built fixture**: no successful kimi run could be
+  recorded while the account was over its limit, so it follows kimi 2.1.1's print-mode emitter line for
+  line. `testdata/README.md` records that, and it is replaced by a live capture once one can be made.
 
-Fixtures are recorded from real CLI output, not hand-written.
+Fixtures are recorded from real CLI output, not hand-written, `kimi-clean.jsonl` above being the one
+exception pending its capture.
 Hand-written fixtures encode what someone assumed the CLI emits, which is exactly the class of bug they should catch.
 
 **A claude capture carries the recording machine's environment, and this repository is public.**

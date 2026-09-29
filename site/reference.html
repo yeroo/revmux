@@ -149,6 +149,8 @@
               <tr><td>--auto-exit=&lt;d&gt;</td><td>0s</td><td class="prose">close the terminal UI this long after the report arrives; 0 never closes it. Also a config key</td></tr>
               <tr><td>--codex-sandbox=&lt;mode&gt;</td><td>read-only</td><td class="prose">sandbox codex agents run their commands under: read-only, workspace-write or danger-full-access. danger-full-access is for a container that is itself the isolation boundary, where codex&#39;s own bubblewrap sandbox cannot start. Also a config key</td></tr>
               <tr><td>--profile=&lt;name&gt;</td><td>comprehensive</td><td class="prose">profile naming the roster to run. Also a config key</td></tr>
+              <tr><td>--kimi-bin=&lt;path&gt;</td><td>kimi</td><td class="prose">kimi binary to run; the bare name searches <code>PATH</code>, then <code>~/.kimi-code/bin</code>. Also a config key</td></tr>
+              <tr><td>--kimi-idle-timeout=&lt;d&gt;</td><td>6m</td><td class="prose">kill and retry a kimi agent after this long with no output, in place of <code>--idle-timeout</code>. Also a config key</td></tr>
               <tr><td>--config-dir=&lt;dir&gt;</td><td>~/.config/revmux</td><td class="prose">directory holding the config file and the prompt tree</td></tr>
               <tr><td>--init</td><td></td><td class="prose">materialize the resolved prompt tree and a config template into <code>./.revmux/</code></td></tr>
               <tr><td>--dump-defaults=&lt;dir&gt;</td><td></td><td class="prose">extract the embedded prompt tree into a directory</td></tr>
@@ -159,7 +161,7 @@
 
         <h2 id="knobs">Config keys <a class="anchor" href="#knobs">#</a></h2>
         <p>
-          The nine runtime knobs above also read from <code>./.revmux/config</code> and
+          The twelve runtime knobs above also read from <code>./.revmux/config</code> and
           <code>~/.config/revmux/config</code>, under the same name as the flag, in INI format. Command line
           wins, then project, then user, then the default, merged per key. Every other flag is command line
           only.
@@ -180,6 +182,8 @@
               <tr><td>auto-exit</td><td>0s</td><td class="prose">close the terminal UI this long after the report arrives; 0 never closes it</td></tr>
               <tr><td>codex-sandbox</td><td>read-only</td><td class="prose">sandbox codex agents run their commands under: read-only, workspace-write or danger-full-access. danger-full-access is for a container that is itself the isolation boundary, where codex&#39;s own bubblewrap sandbox cannot start</td></tr>
               <tr><td>profile</td><td>comprehensive</td><td class="prose">profile naming the roster to run</td></tr>
+              <tr><td>kimi-bin</td><td>kimi</td><td class="prose">kimi binary to run; the bare name searches <code>PATH</code>, then <code>~/.kimi-code/bin</code></td></tr>
+              <tr><td>kimi-idle-timeout</td><td>6m</td><td class="prose">kill and retry a kimi agent after this long with no output, in place of <code>idle-timeout</code></td></tr>
             </tbody>
           </table>
         </div>
@@ -303,6 +307,7 @@ claude                   claude, its own default model and effort
 claude/opus:high         fully specified
 codex/gpt-6-sol          effort falls back to the profile's, then the binary's
 codex:high               codex's default model at high effort
+kimi/kimi-code/kimi-for-coding   a kimi alias; effort is ignored, kimi reads it from config.toml
 claude/                  <span class="c-crimson">refused: a second spelling of `claude`</span>
 claude/opus:hgih         <span class="c-crimson">refused: not an effort</span></pre>
         <div class="scroll-x">
@@ -311,7 +316,7 @@ claude/opus:hgih         <span class="c-crimson">refused: not an effort</span></
               <tr><th>vocabulary</th><th>values</th></tr>
             </thead>
             <tbody>
-              <tr><td>executors</td><td class="prose"><code>claude</code>, <code>codex</code></td></tr>
+              <tr><td>executors</td><td class="prose"><code>claude</code>, <code>codex</code>, <code>kimi</code></td></tr>
               <tr><td>efforts</td><td class="prose"><code>low</code>, <code>medium</code>, <code>high</code>, <code>xhigh</code>, <code>max</code></td></tr>
             </tbody>
           </table>
@@ -337,6 +342,8 @@ claude/opus:hgih         <span class="c-crimson">refused: not an effort</span></
               <tr><td>claude-only</td><td>claude</td><td class="prose">the four lens splits on claude alone</td></tr>
               <tr><td>codex-only</td><td>codex</td><td class="prose">the four lens splits on codex, both stages with them</td></tr>
               <tr><td>grill-me</td><td>both</td><td class="prose">two lens splits, each run once on claude and once on codex</td></tr>
+              <tr><td>kimi-mixed</td><td>kimi, claude</td><td class="prose"><code>bugs+impl</code> and <code>adversarial</code> on kimi, the other two splits and both stages on claude</td></tr>
+              <tr><td>kimi-only</td><td>kimi, claude</td><td class="prose">the four lens splits on kimi, both stages on claude</td></tr>
               <tr><td>expert</td><td>both</td><td class="prose">two agents at xhigh, each carrying all eight code lenses</td></tr>
               <tr><td>triage</td><td>both</td><td class="prose">a four-way panel over a filed item; wants <code>--no-synthesis</code></td></tr>
             </tbody>

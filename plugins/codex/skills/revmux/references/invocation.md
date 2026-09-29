@@ -36,8 +36,9 @@ revmux --task pr-123 --run 01-initial --no-tui > /tmp/revmux-pr-123.json 2> /tmp
   tty happened to be openable
 
 Timeouts are configurable if a run is genuinely stuck rather than slow: `--idle-timeout` (default
-`2m`) kills and retries an agent that has produced no output for that long, and `--hard-timeout`
-(default `20m`) caps a single attempt. Raising them makes a stalled run take longer to fail, not more
+`2m`) kills and retries an agent that has produced no output for that long — a kimi agent uses
+`--kimi-idle-timeout` (default `6m`) instead, since kimi writes nothing while one model step runs — and
+`--hard-timeout` (default `20m`) caps a single attempt. Raising them makes a stalled run take longer to fail, not more
 likely to succeed.
 
 ## Relay the milestones while it runs
@@ -143,7 +144,7 @@ not the session happened to be split.
 
 ### Why the launcher forwards PATH
 
-revmux spawns `claude` and `codex` itself, and overlay backends start children from a server process
+revmux spawns `claude`, `codex` and `kimi` itself, and overlay backends start children from a server process
 whose environment predates the user's shell rc files. Without forwarding, every agent degrades on a
 binary that is plainly installed and the run exits `2`.
 
@@ -221,6 +222,8 @@ will not read, and an unwritable `./.revmux/` under `revmux init`.
 | `final` | `bugs+impl` plus the codex peer, nothing below major reported | last look before merging |
 | `claude-only` | `bugs+impl`, `arch+quality`, `docs+tests`, `adversarial` — all on claude | codex is unavailable or unwanted |
 | `codex-only` | the same four splits on codex, synthesis and verify included — no claude anywhere | claude is unavailable or unwanted |
+| `kimi-mixed` | `bugs+impl` and `adversarial` on kimi, `arch+quality` and `docs+tests` on claude, both stages on claude | the user wants kimi on the panel beside claude |
+| `kimi-only` | the same four splits on kimi, with synthesis and verify on claude | comparing kimi's findings with `claude-only`'s; the stages are held on claude so only the finders differ |
 | `grill-me` | `bugs+impl` and `architecture+quality`, each run once on claude and once on codex, every agent reading against the change | the user asked to be grilled; corroboration between two vendors on one lens pair is the point |
 | `expert` | two agents at xhigh — codex `gpt-6-astra:xhigh` and claude `fable:xhigh` — each carrying all eight lenses, both stages on fable | a plan, or a change nobody wants to get wrong. Both agents read everything, so agreement between them is real corroboration rather than two halves of one review |
 | `triage` | `facts` (grounding + precedent), `thesis`, `antithesis` on claude, plus `cost` on codex | the subject is a filed item rather than a diff — an issue, a proposal, a discussion |
@@ -566,12 +569,16 @@ form: the decision is the user's, one task per call.
 
 ## Environment
 
-revmux drives the model CLIs as subprocesses, so both must already be installed and authenticated:
+revmux drives the model CLIs as subprocesses, so the ones a profile names must already be installed and
+authenticated:
 
 - `claude` — every lens agent and both model stages run on it by default
 - `codex` — needed when a profile, a roster entry or a stage names it in its `model:`. `claude-only`
-  needs claude alone and `codex-only` needs codex alone; the other six shipped profiles need both.
-  `preflight.sh <profile>` answers it for the profile that will actually run
+  needs claude alone and `codex-only` needs codex alone; the six that mix the two need both.
+- `kimi` — needed by `kimi-mixed` and `kimi-only`, which need claude beside it for synthesis and verify.
+  revmux finds it on `PATH`, then in `~/.kimi-code/bin`, or wherever `--kimi-bin` says.
+  Of the ten shipped profiles, one needs claude alone, one codex alone, six claude and codex, and two
+  claude and kimi. `preflight.sh <profile>` answers it for the profile that will actually run
 
 `ANTHROPIC_API_KEY` is stripped from the child environment by default so `claude` uses interactive
 subscription auth; `--preserve-anthropic-api-key` passes it through for key-based auth. `CLAUDECODE`
@@ -614,6 +621,8 @@ These also read from the config file, under the same name as the flag:
 | `--auto-exit=<d>` | `auto-exit` | `0s` | close the TUI this long after the report arrives; `0` waits for the reader to quit with `q` or `ctrl+c` |
 | `--codex-sandbox=<mode>` | `codex-sandbox` | `read-only` | sandbox codex agents run their commands under: `read-only`, `workspace-write` or `danger-full-access`. `danger-full-access` is for a container that is itself the isolation boundary, where codex's own bubblewrap sandbox cannot start |
 | `--profile=<name>` | `profile` | `comprehensive` | profile naming the roster to run |
+| `--kimi-bin=<path>` | `kimi-bin` | `kimi` | kimi binary to run; the bare name searches `PATH`, then `~/.kimi-code/bin` |
+| `--kimi-idle-timeout=<d>` | `kimi-idle-timeout` | `6m` | kill and retry a kimi agent after this long with no output, in place of `--idle-timeout` |
 
 `--task` and `--run` are not config keys: a config file naming the round to write would make the same
 command review different context in different directories.
