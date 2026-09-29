@@ -153,12 +153,15 @@ func TestRun_config(t *testing.T) {
 			for _, a := range p.Roster {
 				assert.NotEmpty(t, a.Lenses, "agent %s carries no lens", a.Name)
 				assert.NotEmpty(t, a.Model, "agent %s reports no model", a.Name)
-				assert.NotEmpty(t, a.Effort, "agent %s reports no effort", a.Name)
+				if a.Executor != "kimi" { // kimi reads its effort from its own config.toml and has no flag
+					assert.NotEmpty(t, a.Effort, "agent %s reports no effort", a.Name)
+				}
 				assert.NotEmpty(t, a.Executor, "agent %s reports no executor", a.Name)
 				assert.NotEmpty(t, a.Color, "agent %s reports no color, so the palette assignment is invisible", a.Name)
 			}
 		}
-		assert.Equal(t, []string{"claude-only", "codex-only", "comprehensive", "expert", "final", "focused", "grill-me", "triage"}, names)
+		assert.Equal(t, []string{"claude-only", "codex-only", "comprehensive", "expert", "final", "focused", "grill-me", "kimi-mixed",
+			"kimi-only", "triage"}, names)
 
 		set, err := prompt.Load(prompt.LoadOpts{})
 		require.NoError(t, err)
