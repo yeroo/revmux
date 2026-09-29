@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # preflight.sh - verify revmux and the model CLIs a profile actually needs.
 #
-# revmux drives `claude` and `codex` as subprocesses, so a missing binary is a run that
+# revmux drives `claude`, `codex` and `kimi` as subprocesses, so a missing binary is a run that
 # starts, launches agents, and degrades every source before failing with exit 2. Checking
 # first turns that into one line of output.
 #
@@ -133,9 +133,31 @@ else
     exit 1
 fi
 
+# kimiPath finds kimi the way revmux does: the kimi-bin knob when it names anything but the bare binary,
+# then PATH, then the directory kimi's installer writes to, which it does not always put on PATH.
+kimiPath() {
+    bin=$(printf '%s' "$cfg" | jq -r '(.knobs[] | select(.name == "kimi-bin") | .value) // "kimi"')
+    if [ "$bin" != kimi ]; then
+        command -v "$bin" 2>/dev/null
+        return
+    fi
+    command -v kimi 2>/dev/null && return
+    for p in "$HOME/.kimi-code/bin/kimi" "$HOME/.kimi-code/bin/kimi.exe"; do
+        if [ -x "$p" ]; then
+            echo "$p"
+            return
+        fi
+    done
+}
+
 for exe in $executors; do
-    if command -v "$exe" >/dev/null 2>&1; then
-        echo "$exe: $(command -v "$exe")"
+    if [ "$exe" = kimi ]; then
+        path=$(kimiPath)
+    else
+        path=$(command -v "$exe" 2>/dev/null)
+    fi
+    if [ -n "$path" ]; then
+        echo "$exe: $path"
     else
         fail "$exe: MISSING - required by this invocation"
     fi
