@@ -293,13 +293,16 @@ func artifactHarness(t *testing.T) (*harness, func() []string) {
 		r := inner(spec)
 		return &mocks.RunnerMock{
 			RunFunc: func(ctx context.Context, req executor.Request, sink executor.EventSink) (executor.Result, error) {
-				// the real executors append to the prompt inside Run — codex its output contract,
-				// claude its narration contract — and this mock stands in for one of them. Recording
-				// the prompt as handed over would make "the archived prompt is what a process
+				// the real executors append to the prompt inside Run — codex and kimi their output
+				// contract, claude its narration contract — and this mock stands in for one of them.
+				// Recording the prompt as handed over would make "the archived prompt is what a process
 				// received" pass against bytes no process would ever receive.
 				prompt := req.Prompt + executor.ClaudeNarrationContract(req.Schema)
-				if spec.Executor == executorCodex {
+				switch spec.Executor {
+				case executorCodex:
 					prompt = req.Prompt + executor.CodexOutputContract(req.Schema)
+				case executorKimi:
+					prompt = req.Prompt + executor.KimiOutputContract(req.Schema)
 				}
 				mu.Lock()
 				prompts = append(prompts, prompt)

@@ -37,8 +37,8 @@ const (
 
 // answered reports whether a decoded payload is the shape the stage asked for. Decoding alone does not
 // say so: an object carrying some other key unmarshals leaving the list nil and no error, so a process
-// that answered something else reads as one that found nothing. The gap is codex's alone — it has no
-// --json-schema, and extraction takes the first decodable object anywhere in its stdout. An empty list
+// that answered something else reads as one that found nothing. The gap is codex's and kimi's — neither
+// has --json-schema, so extraction reads the answer out of prose. An empty list
 // is still an answer: {"findings": []} carries the key and passes.
 func answered(raw json.RawMessage, key string) bool {
 	var obj map[string]json.RawMessage
@@ -50,13 +50,22 @@ func answered(raw json.RawMessage, key string) bool {
 }
 
 // archivedPrompt is the prompt the process actually receives, which is the only version worth storing.
-// Each executor appends something of its own — codex its output contract, claude its narration contract
-// — so a prompt archived as composed describes a review that did not happen.
+// Each executor appends something of its own — codex and kimi their output contract, claude its narration
+// contract — so a prompt archived as composed describes a review that did not happen. Every executor is
+// a case of its own rather than claude being the fallback: an executor added without one would archive
+// claude's suffix beside a run that never received it. Empty is claude because the runner factory reads
+// it that way; anything else past the vocabulary check at load is a missing case here.
 func archivedPrompt(exec, text string, schema json.RawMessage) string {
-	if exec != executorCodex {
+	switch exec {
+	case "", executorClaude:
 		return text + executor.ClaudeNarrationContract(schema)
+	case executorCodex:
+		return text + executor.CodexOutputContract(schema)
+	case executorKimi:
+		return text + executor.KimiOutputContract(schema)
+	default:
+		panic("archivedPrompt: no suffix known for executor " + exec)
 	}
-	return text + executor.CodexOutputContract(schema)
 }
 
 // Runner runs one supervised process. It is declared here, by the consumer, and exported only so

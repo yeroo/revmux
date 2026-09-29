@@ -56,16 +56,18 @@ type options struct {
 	Markdown       bool     `long:"markdown" no-ini:"true" description:"write the report as markdown instead of JSON"`
 	PreserveAPIKey bool     `long:"preserve-anthropic-api-key" no-ini:"true" description:"pass ANTHROPIC_API_KEY to the model CLIs"`
 
-	IdleTimeout   time.Duration `long:"idle-timeout" ini-name:"idle-timeout" default:"2m" description:"kill and retry an agent after this long with no output"`
-	HardTimeout   time.Duration `long:"hard-timeout" ini-name:"hard-timeout" default:"20m" description:"kill an agent after this long, per attempt"`
-	StaggerDelay  time.Duration `long:"stagger-delay" ini-name:"stagger-delay" default:"30s" description:"how long to wait for the first agent before releasing the rest"`
-	MaxParallel   int           `long:"max-parallel" ini-name:"max-parallel" default:"4" description:"how many agents run at once"`
-	VerifyGroups  int           `long:"verify-groups" ini-name:"verify-groups" default:"6" description:"cap on the number of verifier groups"`
-	VerifyGroupBy string        `long:"verify-group-by" ini-name:"verify-group-by" choice:"dir" choice:"source" default:"dir" description:"key verifier groups by directory or by the agent that raised the finding"`
-	TasksDir      string        `long:"tasks-dir" ini-name:"tasks-dir" default:"./.revmux/tasks" description:"root directory holding task directories"`
-	AutoExit      time.Duration `long:"auto-exit" ini-name:"auto-exit" default:"0s" description:"close the terminal UI this long after the report arrives; 0 never closes it"`
-	Profile       string        `long:"profile" ini-name:"profile" default:"comprehensive" description:"profile naming the roster to run"`
-	CodexSandbox  string        `long:"codex-sandbox" ini-name:"codex-sandbox" choice:"read-only" choice:"workspace-write" choice:"danger-full-access" default:"read-only" description:"sandbox codex agents run their commands under"`
+	IdleTimeout     time.Duration `long:"idle-timeout" ini-name:"idle-timeout" default:"2m" description:"kill and retry an agent after this long with no output"`
+	HardTimeout     time.Duration `long:"hard-timeout" ini-name:"hard-timeout" default:"20m" description:"kill an agent after this long, per attempt"`
+	StaggerDelay    time.Duration `long:"stagger-delay" ini-name:"stagger-delay" default:"30s" description:"how long to wait for the first agent before releasing the rest"`
+	MaxParallel     int           `long:"max-parallel" ini-name:"max-parallel" default:"4" description:"how many agents run at once"`
+	VerifyGroups    int           `long:"verify-groups" ini-name:"verify-groups" default:"6" description:"cap on the number of verifier groups"`
+	VerifyGroupBy   string        `long:"verify-group-by" ini-name:"verify-group-by" choice:"dir" choice:"source" default:"dir" description:"key verifier groups by directory or by the agent that raised the finding"`
+	TasksDir        string        `long:"tasks-dir" ini-name:"tasks-dir" default:"./.revmux/tasks" description:"root directory holding task directories"`
+	AutoExit        time.Duration `long:"auto-exit" ini-name:"auto-exit" default:"0s" description:"close the terminal UI this long after the report arrives; 0 never closes it"`
+	Profile         string        `long:"profile" ini-name:"profile" default:"comprehensive" description:"profile naming the roster to run"`
+	CodexSandbox    string        `long:"codex-sandbox" ini-name:"codex-sandbox" choice:"read-only" choice:"workspace-write" choice:"danger-full-access" default:"read-only" description:"sandbox codex agents run their commands under"`
+	KimiBin         string        `long:"kimi-bin" ini-name:"kimi-bin" default:"kimi" description:"kimi binary to run; the bare name searches PATH, then ~/.kimi-code/bin"`
+	KimiIdleTimeout time.Duration `long:"kimi-idle-timeout" ini-name:"kimi-idle-timeout" default:"6m" description:"kill and retry a kimi agent after this long with no output"`
 
 	ConfigDir    string `long:"config-dir" no-ini:"true" description:"directory holding the config file and the prompt tree"`
 	Init         bool   `long:"init" no-ini:"true" description:"materialize the resolved prompt tree and a config template into ./.revmux/"`
@@ -307,12 +309,14 @@ func (o options) promptOpts() prompt.LoadOpts {
 // review is the one its process actually runs in.
 func (o options) executorOpts(rc reviewContext, clk executor.Clock) executor.Opts {
 	return executor.Opts{
-		IdleTimeout:    o.IdleTimeout,
-		HardTimeout:    o.HardTimeout,
-		CodexSandbox:   o.CodexSandbox,
-		WorkDir:        rc.WorkDir,
-		PreserveAPIKey: o.PreserveAPIKey,
-		Clock:          clk,
+		IdleTimeout:     o.IdleTimeout,
+		HardTimeout:     o.HardTimeout,
+		CodexSandbox:    o.CodexSandbox,
+		KimiBin:         o.KimiBin,
+		KimiIdleTimeout: o.KimiIdleTimeout,
+		WorkDir:         rc.WorkDir,
+		PreserveAPIKey:  o.PreserveAPIKey,
+		Clock:           clk,
 	}
 }
 

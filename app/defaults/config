@@ -38,3 +38,10 @@
 # a container that is itself the isolation boundary sets danger-full-access, because codex's own
 # bubblewrap sandbox needs user namespaces and every command fails before it runs without them
 # codex-sandbox = read-only
+
+# kimi binary to run; the bare name searches PATH, then ~/.kimi-code/bin, where kimi's installer puts it
+# kimi-bin = kimi
+
+# how long a kimi agent may go without output before it is killed and retried. kimi writes nothing on any
+# channel while one model step runs, and a step writing a long answer takes minutes, so it gets its own
+# kimi-idle-timeout = 6m

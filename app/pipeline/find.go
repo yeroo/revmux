@@ -18,9 +18,13 @@ import (
 	"github.com/umputun/revmux/app/task"
 )
 
-// executorCodex names the one roster executor whose output is prose rather than stream-json, so its
-// verbatim tee gets a different extension.
-const executorCodex = "codex"
+// the roster executors the pipeline tells apart. Codex is the one whose stdout is prose rather than JSON
+// lines, so its verbatim tee alone gets a different extension; kimi's is JSON lines like claude's.
+const (
+	executorClaude = "claude"
+	executorCodex  = "codex"
+	executorKimi   = "kimi"
+)
 
 // maxAttempts is one launch plus one retry. A second failure degrades the source and the run
 // continues, because one flaky agent must not waste every other agent's work.
@@ -198,7 +202,8 @@ func (f *finder) attempt(ctx context.Context, opts attemptOpts) (executor.Result
 
 // fault judges one attempt. A nil return means the process delivered; anything else is what a retry
 // would survive — a stall, a rate limit, a dead process, a transport error, or a clean exit carrying
-// nothing, which is the codex path's own failure mode since its output contract is prompt-driven.
+// nothing, which is the codex and kimi paths' own failure mode since their output contract is
+// prompt-driven.
 //
 // Three things are not faults. A payload that arrived but is not the answer: the process delivered, so
 // parse rejects it and degrades this source alone. A stall or rate limit that nonetheless carried

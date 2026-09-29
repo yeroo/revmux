@@ -796,6 +796,7 @@ func TestFinder_rawName(t *testing.T) {
 		{name: "an agent named events cannot collide", spec: prompt.AgentSpec{Name: "events", Executor: "claude"}, want: "agents/events.jsonl"},
 		{name: "a claude retry keeps both attempts", spec: prompt.AgentSpec{Name: "bugs", Executor: "claude"}, attempt: 1, want: "agents/bugs.retry.jsonl"},
 		{name: "a codex retry keeps both attempts", spec: prompt.AgentSpec{Name: "codex", Executor: "codex"}, attempt: 1, want: "agents/codex.retry.log"},
+		{name: "kimi stream-json", spec: prompt.AgentSpec{Name: "bugs+impl", Executor: "kimi"}, want: "agents/bugs+impl.jsonl"},
 	}
 
 	f := &finder{}
