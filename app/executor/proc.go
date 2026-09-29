@@ -30,9 +30,12 @@ type runSpec struct {
 	// it reasons, and the only proof it is alive is its rollout file, which proc knows nothing about.
 	// Called once, before anything can stall.
 	shareTouch func(func())
+	// promptInArgv leaves stdin empty: the executor already put the prompt on the command line, and a
+	// CLI with no stdin mode must not be handed a second copy it will never read.
+	promptInArgv bool
 }
 
-// proc is the machinery Claude and Codex share: start, idle watchdog, process-group teardown, line
+// proc is the machinery every executor shares: start, idle watchdog, process-group teardown, line
 // reading. It holds immutable configuration only — one instance serves every roster entry concurrently,
 // so any per-run state would be a data race.
 type proc struct {
@@ -72,7 +75,11 @@ func (p *proc) run(ctx context.Context, req Request, spec runSpec) (Result, erro
 		defer idle.Stop()
 	}
 
-	run, err := p.start(runCtx, spec.argv, req.Prompt)
+	stdin := req.Prompt
+	if spec.promptInArgv {
+		stdin = ""
+	}
+	run, err := p.start(runCtx, spec.argv, stdin)
 	if err != nil {
 		return Result{}, err
 	}
