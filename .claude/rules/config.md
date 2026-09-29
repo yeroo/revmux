@@ -48,7 +48,7 @@ config's other keys.
 ### What belongs in the config file
 
 Runtime knobs only: `idle-timeout`, `hard-timeout`, `stagger-delay`, `max-parallel`, `verify-groups`,
-`verify-group-by`, `tasks-dir`, `auto-exit`, `profile`, `codex-sandbox`.
+`verify-group-by`, `tasks-dir`, `auto-exit`, `profile`, `codex-sandbox`, `kimi-bin`, `kimi-idle-timeout`.
 The key is the long flag name verbatim, hyphens included — that is what `ini-name` is set to, and it is what
 makes the key guessable from `--help`.
 

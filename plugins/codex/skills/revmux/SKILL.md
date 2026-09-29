@@ -301,6 +301,8 @@ scale numbers are what Step 4's one-line announcement is built from.
 | `final` | `bugs+impl` plus codex peer, nothing below major | pre-merge |
 | `claude-only` | the same four lens splits, all on claude | no codex available |
 | `codex-only` | the same four lens splits on codex, and synthesis and verify with them | no claude available |
+| `kimi-mixed` | `bugs+impl` and the adversarial seat on kimi, `arch+quality` and `docs+tests` on claude, both stages on claude | the user wants kimi on the panel |
+| `kimi-only` | the same four lens splits on kimi, both stages on claude | comparing kimi's findings against `claude-only` |
 | `grill-me` | `bugs+impl` and `architecture+quality`, each once on claude and once on codex, all reading against the change | the user wants it torn apart |
 | `expert` | two agents at xhigh, codex `gpt-6-astra:xhigh` and claude `fable:xhigh`, each carrying all eight lenses | a plan, or a change nobody wants to get wrong. Slow and expensive; pick it when he says so, not by default |
 | `triage` | `facts` (grounding + precedent), `thesis`, `antithesis`, `cost` on codex | a filed item rather than a diff; needs `--no-synthesis --verify-group-by source`, `references/triage.md` |
@@ -323,6 +325,8 @@ fails the run.
 | last, pre-merge, before merge, strict | `final` |
 | claude only, no codex, skip codex | `claude-only` |
 | codex only, no claude, codex alone | `codex-only` |
+| with kimi, kimi on the panel, mix in kimi | `kimi-mixed` |
+| kimi only, kimi alone, just kimi | `kimi-only` — it still needs claude, which runs synthesis and verify |
 | grill me, tear it apart, be brutal, no mercy, adversarial | `grill-me` |
 | expert, best models, highest effort, spare no expense, use astra and fable | `expert` — and only on words like these, never inferred from the subject |
 | triage this, is this worth doing, should we accept this, should I close this | `triage`, and the subject is a filed item rather than a diff — `references/triage.md`, which owns the flags it needs |

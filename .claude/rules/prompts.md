@@ -15,6 +15,7 @@ and get the same review, and change a timeout without touching a prompt.
 prompts/profiles/comprehensive.md   focused.md   final.md   claude-only.md   codex-only.md   grill-me.md
 prompts/profiles/expert.md
 prompts/profiles/triage.md
+prompts/profiles/kimi-mixed.md   kimi-only.md
 prompts/synthesis.md   prompts/verify.md
 lenses/bugs.md  impl.md  architecture.md  quality.md  docs.md  tests.md  comments.md  adversarial.md
 lenses/grounding.md  precedent.md  thesis.md  antithesis.md  cost.md
@@ -60,6 +61,7 @@ claude                   the binary's own default model and effort
 claude/opus:high         fully specified
 codex/gpt-6-sol          effort falls back to the profile's, then the binary's
 codex:high               the binary's default model at high effort
+kimi/kimi-code/kimi-for-coding   a kimi alias carries a slash of its own; the first one splits
 ```
 
 **The binary leads and is mandatory, which is what makes the value validate itself.**
@@ -203,7 +205,7 @@ See `.claude/rules/pipeline.md`.
 
 ### Executor and lens are orthogonal
 
-A `model:` names `claude` or `codex` and nothing else.
+A `model:` names `claude`, `codex` or `kimi` and nothing else.
 Anything else is a **load-time** error with a clear message, never a runtime surprise.
 
 There is no codex-specific prompt file and no per-entry prompt-path override.
@@ -212,11 +214,14 @@ Consequences worth preserving: the adversarial lens can run on claude by changin
 and the `bugs` lens can run on codex.
 
 Lens text must stay executor-agnostic.
-The output-contract difference — claude has `--json-schema`, codex does not — is injected by the executor.
+The output-contract difference — claude has `--json-schema`, codex and kimi do not — is injected by the executor.
 Never write "return JSON shaped like…" into a lens file.
 
 **The contract is appended after the stage has already archived the prompt, so the stage appends it to what
-it stores too**, through the exported `executor.CodexOutputContract`.
+it stores too**, through the exported `executor.CodexOutputContract` or `executor.KimiOutputContract`.
+`pipeline.archivedPrompt` names every executor as a case of its own rather than letting claude's suffix be the
+fallback, and a test walks `prompt.Executors()`, so an executor added to the vocabulary without a case fails
+there instead of archiving a contract its process never received.
 The text stays in the executor — that is what the rule above is about — but an archived codex prompt missing
 the one instruction that asks for JSON at all is not the bytes the model saw, and describes a run that did
 not happen.
@@ -395,7 +400,7 @@ the `revmux config` payload, where an untagged field would emit `URL` rather tha
 - every lens named by a roster entry exists
 - every stage named by a profile's `stages:` block is one the pipeline dispatches — `synthesis` or
   `verify`, not merely a `prompts/*.md` that loaded
-- every `model:` parses: the binary is `claude` or `codex`, and an effort suffix is one of `low`,
+- every `model:` parses: the binary is `claude`, `codex` or `kimi`, and an effort suffix is one of `low`,
   `medium`, `high`, `xhigh`, `max`. `parseRunner` is the only way a runner is built, so it is the only
   place either vocabulary is checked — a second check elsewhere is unreachable code pretending to guard
 - `color`, when present, is an ANSI-16 name (`red`, `bright-blue`, …) or `#RRGGBB`

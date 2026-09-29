@@ -232,7 +232,12 @@ codex plugin add revmux@revmux</pre>
           </li>
           <li><code>claude-only</code>: claude alone</li>
           <li><code>codex-only</code>: codex alone</li>
+          <li><code>kimi-mixed</code>, <code>kimi-only</code>: kimi plus claude, which runs both stages</li>
         </ul>
+        <p>
+          revmux looks for <code>kimi</code> on <code>PATH</code> and then in <code>~/.kimi-code/bin</code>, where
+          kimi's installer puts it; <code>--kimi-bin</code> names it outright.
+        </p>
         <p>
           <code>preflight.sh</code> in the shipped skill answers it for any profile and any invocation,
           <code>--lenses</code> included.
@@ -330,8 +335,8 @@ revmux --task pr-123 --run 02-after-fix &gt; findings.json</pre>
 
         <h2 id="supervision">Supervision and degrade <a class="anchor" href="#supervision">#</a></h2>
         <p>
-          A <strong>finder</strong> that produces no output for <code>--idle-timeout</code> (2m by default) is
-          killed and retried once, after a short jittered pause so the relaunch does not land in whatever
+          A <strong>finder</strong> that produces no output for <code>--idle-timeout</code> (2m by default,
+          <code>--kimi-idle-timeout</code> and 6m for a kimi agent) is killed and retried once, after a short jittered pause so the relaunch does not land in whatever
           window killed it. So is one that exceeds <code>--hard-timeout</code> (20m per attempt). On a
           second failure the agent is marked degraded and the run continues: the report banner names the
           missing agent, and synthesis is told the real source count rather than being left to assume a full
@@ -519,7 +524,8 @@ Reviewing the token exchange path after the provider swap.</pre>
 │   ├── profiles/
 │   │   ├── comprehensive.md  roster front matter + shared preamble + severity bar
 │   │   ├── focused.md  final.md  claude-only.md  codex-only.md
-│   │   └── grill-me.md  expert.md  triage.md
+│   │   ├── grill-me.md  expert.md  triage.md
+│   │   └── kimi-mixed.md  kimi-only.md
 │   ├── synthesis.md
 │   └── verify.md
 └── lenses/
@@ -573,14 +579,15 @@ agents:
         <h3>The model string</h3>
         <p>
           One <code>model</code> string selects the binary, the model and the effort together. The binary leads
-          and is mandatory, either <code>claude</code> or <code>codex</code>, so a value validates itself and
+          and is mandatory, one of <code>claude</code>, <code>codex</code> or <code>kimi</code>, so a value validates itself and
           revmux never has to guess which CLI runs <code>gpt-6-sol</code> from a catalog of model names that
           would go stale.
         </p>
         <pre class="code">claude                   claude, its own default model and effort
 claude/opus:high         fully specified
 codex/gpt-6-sol          effort falls back to the profile's, then the binary's
-codex:high               codex's default model at high effort</pre>
+codex:high               codex's default model at high effort
+kimi/kimi-code/kimi-for-coding   a kimi alias, which carries a slash of its own</pre>
         <p>
           The three travel together because they are not independent: <code>opus</code> means nothing to codex.
           A file cannot state a pairing that will not run, and an entry naming a different binary than the
@@ -588,6 +595,10 @@ codex:high               codex's default model at high effort</pre>
           refused, since <code>claude/</code> is a second spelling of <code>claude</code>. It parses on the first
           <code>/</code> so a model whose own name has one survives, and on the last <code>:</code>, whose
           suffix must be a real effort: <code>:hgih</code> is a load error rather than a typo nobody sees.
+        </p>
+        <p>
+          kimi has no flag for effort: it reads one from its own <code>~/.kimi-code/config.toml</code>. An effort
+          a kimi entry names or inherits is accepted and reported as ignored in that agent's log, never passed.
         </p>
         <p>
           A stage resolves through three layers in turn: its <code>stages:</code> override, the stage file's own
@@ -640,6 +651,20 @@ codex:high               codex's default model at high effort</pre>
                 </td>
               </tr>
               <tr>
+                <td>kimi-mixed</td>
+                <td class="prose">
+                  <code>bugs+impl</code> and <code>adversarial</code> on kimi, <code>arch+quality</code> and
+                  <code>docs+tests</code> on claude, both stages on claude
+                </td>
+              </tr>
+              <tr>
+                <td>kimi-only</td>
+                <td class="prose">
+                  the same four lens splits on kimi, with a <code>stages:</code> block keeping synthesis and
+                  verify on claude, so a round compares against <code>claude-only</code> by its finders alone
+                </td>
+              </tr>
+              <tr>
                 <td>grill-me</td>
                 <td class="prose">
                   <code>bugs+impl</code> and <code>architecture+quality</code>, each run once on claude and once
@@ -673,7 +698,7 @@ codex:high               codex's default model at high effort</pre>
         </p>
         <h3>Writing your own</h3>
         <p>
-          The eight are starting points, not the menu. A profile is a file under
+          The ten are starting points, not the menu. A profile is a file under
           <code>prompts/profiles/</code> in any of the three layers, so dropping
           <code>.revmux/prompts/profiles/release.md</code> into a project makes
           <code>--profile release</code> work, with no registration step anywhere. The same is true of lenses:
@@ -790,6 +815,8 @@ receives, including what counts as critical, major and minor here.</pre>
               <tr><td>--auto-exit</td><td>0s</td><td class="prose">close the terminal UI this long after the report arrives; 0 never closes it</td></tr>
               <tr><td>--codex-sandbox</td><td>read-only</td><td class="prose">sandbox codex agents run their commands under: read-only, workspace-write or danger-full-access. danger-full-access is for a container that is itself the isolation boundary, where codex&#39;s own bubblewrap sandbox cannot start, so every command fails before it runs while the agent still returns schema-valid empty findings</td></tr>
               <tr><td>--profile</td><td>comprehensive</td><td class="prose">profile naming the roster to run</td></tr>
+              <tr><td>--kimi-bin</td><td>kimi</td><td class="prose">kimi binary to run. The bare name searches <code>PATH</code>, then <code>~/.kimi-code/bin</code>, where kimi&#39;s installer puts it without always adding it to <code>PATH</code></td></tr>
+              <tr><td>--kimi-idle-timeout</td><td>6m</td><td class="prose">kill and retry a kimi agent after this long with no output. kimi writes nothing on any channel while one model step runs, and a step writing a long answer was measured at over five minutes, so the shared <code>--idle-timeout</code> would kill it while it works</td></tr>
             </tbody>
           </table>
         </div>
@@ -1067,7 +1094,7 @@ receives, including what counts as critical, major and minor here.</pre>
                 "roster": [...], "stages": [...]}],
   "lenses": [{"name": "adversarial", "description": "..."}],
   "stages": [{"name": "synthesis", "description": "..."}],
-  "vocabulary": {"executors": ["claude", "codex"],
+  "vocabulary": {"executors": ["claude", "codex", "kimi"],
                  "efforts": ["low", "medium", "high", "xhigh", "max"]},
   "paths": {
     "tasks_dir": "/abs/project/.revmux/tasks",
