@@ -164,7 +164,7 @@ Every artifact lands in the round directory — the `round_dir` `revmux new` rep
 │   └── 3-verified.json       absent when the stage was skipped
 ├── events.jsonl              stalls, retries, degrades, stage transitions
 ├── agents/
-│   ├── bugs+impl.jsonl       claude stream-json
+│   ├── bugs+impl.jsonl       claude or kimi stream-json
 │   ├── bugs+impl.retry.jsonl second attempt when one was retried
 │   └── codex.log             codex prose
 ├── report.md

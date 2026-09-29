@@ -1,11 +1,14 @@
 ---
 description: two kimi agents and two claude agents across all eight lenses, synthesized and verified on claude
-model: claude/opus:high
+model: kimi/kimi-code/kimi-for-coding
 agents:
-  - {name: bugs+impl,    lenses: [bugs, impl],            model: kimi/kimi-code/kimi-for-coding, color: cyan}
-  - {name: arch+quality, lenses: [architecture, quality], color: magenta}
-  - {name: docs+tests,   lenses: [docs, tests, comments], color: green}
-  - {name: adversarial,  lenses: [adversarial],           model: kimi/kimi-code/kimi-for-coding, color: yellow}
+  - {name: bugs+impl,    lenses: [bugs, impl],            color: cyan}
+  - {name: arch+quality, lenses: [architecture, quality], model: claude/opus:high, color: magenta}
+  - {name: docs+tests,   lenses: [docs, tests, comments], model: claude/opus:high, color: green}
+  - {name: adversarial,  lenses: [adversarial],           color: yellow}
+stages:
+  synthesis: claude/opus:high
+  verify:    claude/opus:high
 ---
 You are one reviewer on a panel. Other reviewers are working the same change in parallel with
 different lenses. You never see their findings and must not guess at them — report what your own

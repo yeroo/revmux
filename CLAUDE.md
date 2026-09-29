@@ -237,7 +237,7 @@ the final report, so a round directory holds:
 ├── stages/           findings after find, after synthesis, after verify
 ├── events.jsonl      revmux's own decisions: stalls, retries, degrades, stage changes
 ├── agents/           verbatim tees, own subdir for the same reason
-│                     <agent>.jsonl claude stream-json, <agent>.log codex prose,
+│                     <agent>.jsonl claude or kimi stream-json, <agent>.log codex prose,
 │                     <agent>.retry.jsonl the second attempt when one is retried
 └── report.md, findings.json
 ```
@@ -334,7 +334,7 @@ There is no codex-specific prompt file — the shipped `adversarial` entry compo
 `lenses/adversarial.md`, and only its `model:` says codex runs it.
 An agent is named for its lens, never for its binary: the exception is a profile whose agents carry
 identical lens sets, where the runner is the only thing distinguishing them — `grill-me` and `expert`.
-Lens text stays executor-agnostic; the output-contract difference (claude has `--json-schema`, codex does not)
+Lens text stays executor-agnostic; the output-contract difference (claude has `--json-schema`, codex and kimi do not)
 is injected by the executor, never authored into a lens file.
 A roster entry also carries an optional `color` — an ANSI-16 name or `#RRGGBB` — resolved in `app/prompt`
 and handed to both renderers, so the TUI and `--no-tui` never color the same agent differently.

@@ -20,6 +20,10 @@ import (
 	"github.com/umputun/revmux/app/finding"
 )
 
+// kimiBin is an explicit override, which resolveKimiBin returns untouched. The bare name would search
+// PATH and the host's own ~/.kimi-code/bin, so what the tests assert would depend on the machine.
+const kimiBin = "/opt/kimi/kimi"
+
 func kimiFixture(t *testing.T, name string) []byte {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join("testdata", name)) //nolint:gosec // a fixture name this file passes itself
@@ -56,13 +60,13 @@ func TestKimi_args(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := fakeRunner("emit", path)
-			k := executor.NewKimi(runner, executor.Opts{KimiBin: "kimi"})
+			k := executor.NewKimi(runner, executor.Opts{KimiBin: kimiBin})
 			_, err := k.Run(context.Background(), tt.req, discardSink())
 			require.NoError(t, err)
 
 			require.Len(t, runner.CommandCalls(), 1)
 			call := runner.CommandCalls()[0]
-			assert.Equal(t, "kimi", call.Name)
+			assert.Equal(t, kimiBin, call.Name)
 			assert.Equal(t, tt.want, call.Args)
 			for _, forbidden := range []string{"--auto", "--yolo", "-y", "--plan"} {
 				assert.NotContains(t, call.Args, forbidden, "kimi refuses --prompt beside any permission mode flag")
@@ -76,7 +80,7 @@ func TestKimi_Run_effortIsReportedNotPassed(t *testing.T) {
 
 	t.Run("an effort is named once as info", func(t *testing.T) {
 		sink := discardSink()
-		k := executor.NewKimi(fakeRunner("emit", path), executor.Opts{KimiBin: "kimi"})
+		k := executor.NewKimi(fakeRunner("emit", path), executor.Opts{KimiBin: kimiBin})
 		_, err := k.Run(context.Background(), executor.Request{Prompt: "x", Effort: "max"}, sink)
 		require.NoError(t, err)
 
@@ -93,7 +97,7 @@ func TestKimi_Run_effortIsReportedNotPassed(t *testing.T) {
 
 	t.Run("no effort says nothing about it", func(t *testing.T) {
 		sink := discardSink()
-		k := executor.NewKimi(fakeRunner("emit", path), executor.Opts{KimiBin: "kimi"})
+		k := executor.NewKimi(fakeRunner("emit", path), executor.Opts{KimiBin: kimiBin})
 		_, err := k.Run(context.Background(), executor.Request{Prompt: "x"}, sink)
 		require.NoError(t, err)
 		for _, text := range eventTexts(sink, executor.EventInfo) {
@@ -104,7 +108,7 @@ func TestKimi_Run_effortIsReportedNotPassed(t *testing.T) {
 
 func TestKimi_Run_promptNeverReachesStdin(t *testing.T) {
 	// the echo helper copies stdin to stdout, so anything written there comes back as the raw stream
-	k := executor.NewKimi(fakeRunner("echo", "-"), executor.Opts{KimiBin: "kimi"})
+	k := executor.NewKimi(fakeRunner("echo", "-"), executor.Opts{KimiBin: kimiBin})
 	res, err := k.Run(context.Background(), executor.Request{Prompt: "the whole prompt"}, discardSink())
 	require.NoError(t, err)
 	assert.Empty(t, res.Raw, "the prompt travels in argv alone")
@@ -116,7 +120,7 @@ func TestKimi_Run_clean(t *testing.T) {
 	raw := &bytes.Buffer{}
 	sink := discardSink()
 
-	k := executor.NewKimi(fakeRunner("emit", path), executor.Opts{KimiBin: "kimi"})
+	k := executor.NewKimi(fakeRunner("emit", path), executor.Opts{KimiBin: kimiBin})
 	req := executor.Request{Prompt: "x", Model: "kimi-code/kimi-for-coding", Schema: finding.FinderSchema(), RawOutput: raw}
 	res, err := k.Run(context.Background(), req, sink)
 	require.NoError(t, err)
@@ -155,7 +159,7 @@ func TestKimi_Run_metaLinesDoNotOpenTheGate(t *testing.T) {
 	// stagger gate on a process that has done nothing
 	path := writeFixture(t, kimiStallCapture(t))
 	sink := discardSink()
-	k := executor.NewKimi(fakeRunner("emit", path), executor.Opts{KimiBin: "kimi"})
+	k := executor.NewKimi(fakeRunner("emit", path), executor.Opts{KimiBin: kimiBin})
 	_, err := k.Run(context.Background(), executor.Request{Prompt: "x"}, sink)
 	require.NoError(t, err)
 	for _, kind := range eventKinds(sink) {
@@ -169,7 +173,7 @@ func TestKimi_Run_quotaFailure(t *testing.T) {
 	errPath := writeFixture(t, kimiFixture(t, "kimi-quota.err.txt"))
 	sink := discardSink()
 
-	k := executor.NewKimi(fakeRunner("fail", path, errPath), executor.Opts{KimiBin: "kimi"})
+	k := executor.NewKimi(fakeRunner("fail", path, errPath), executor.Opts{KimiBin: kimiBin})
 	res, err := k.Run(context.Background(), executor.Request{Prompt: "x", Schema: finding.FinderSchema()}, sink)
 
 	require.NoError(t, err, "a limit is reported on the result so the pipeline decides")
@@ -200,7 +204,7 @@ func TestKimi_Run_patternTiers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			path := writeFixture(t, kimiStallCapture(t))
 			errPath := writeFixture(t, []byte(tt.stderr))
-			k := executor.NewKimi(fakeRunner("fail", path, errPath), executor.Opts{KimiBin: "kimi"})
+			k := executor.NewKimi(fakeRunner("fail", path, errPath), executor.Opts{KimiBin: kimiBin})
 			res, err := k.Run(context.Background(), executor.Request{Prompt: "x"}, discardSink())
 
 			if tt.wantErr != "" {
@@ -238,7 +242,7 @@ func TestKimi_Run_idleTimeout(t *testing.T) {
 	}
 	go func() { (<-fired)() }()
 
-	opts := executor.Opts{KimiBin: "kimi", IdleTimeout: 2 * time.Minute, KimiIdleTimeout: 6 * time.Minute, Clock: clk}
+	opts := executor.Opts{KimiBin: kimiBin, IdleTimeout: 2 * time.Minute, KimiIdleTimeout: 6 * time.Minute, Clock: clk}
 	k := executor.NewKimi(fakeRunner("stall", path), opts)
 	res, err := k.Run(context.Background(), executor.Request{Prompt: "x"}, discardSink())
 
@@ -256,7 +260,7 @@ func TestKimi_Run_startFailureNamesTheBinary(t *testing.T) {
 			return exec.CommandContext(ctx, "revmux-no-such-binary")
 		},
 	}
-	k := executor.NewKimi(runner, executor.Opts{KimiBin: "kimi"})
+	k := executor.NewKimi(runner, executor.Opts{KimiBin: kimiBin})
 	_, err := k.Run(context.Background(), executor.Request{Prompt: "x"}, discardSink())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "kimi")

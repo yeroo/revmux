@@ -85,7 +85,8 @@ func TestDefaults_EveryProfileResolvesItsRoster(t *testing.T) {
 			assert.NotEmpty(t, spec.Model, "%s/%s: a roster entry with no model runs on whatever the binary defaults to",
 				name, spec.Name)
 			// kimi takes its effort from its own config.toml and has no flag for one, so a shipped kimi entry
-			// naming an effort would state a setting the run ignores
+			// naming or inheriting an effort would record one in the archive that the run never applied —
+			// which is why both kimi profiles put kimi in the top-level model rather than under a claude one
 			if spec.Executor != "kimi" {
 				assert.NotEmpty(t, spec.Effort, "%s/%s: effort must resolve from the profile when the entry omits it",
 					name, spec.Name)
@@ -477,7 +478,7 @@ func TestDefaults_KimiProfiles(t *testing.T) {
 		require.NoError(t, err)
 		out := map[string]string{}
 		for _, s := range specs {
-			out[s.Name] = s.Executor + "/" + s.Model
+			out[s.Name] = s.Executor + "/" + s.Model + ":" + s.Effort
 		}
 		for _, stage := range []string{"synthesis", "verify"} {
 			st, err := p.Stage(set, stage)
@@ -487,15 +488,17 @@ func TestDefaults_KimiProfiles(t *testing.T) {
 		return out
 	}
 
+	// no effort on a kimi entry: one would be recorded in manifest.json and the report while kimi ran
+	// whatever its own config.toml says
 	assert.Equal(t, map[string]string{
-		"bugs+impl": "kimi/" + kimiModel, "adversarial": "kimi/" + kimiModel,
-		"arch+quality": "claude/opus", "docs+tests": "claude/opus",
+		"bugs+impl": "kimi/" + kimiModel + ":", "adversarial": "kimi/" + kimiModel + ":",
+		"arch+quality": "claude/opus:high", "docs+tests": "claude/opus:high",
 		"synthesis": "claude/opus:high", "verify": "claude/opus:high",
 	}, runners(t, "kimi-mixed"))
 
 	assert.Equal(t, map[string]string{
-		"bugs+impl": "kimi/" + kimiModel, "adversarial": "kimi/" + kimiModel,
-		"arch+quality": "kimi/" + kimiModel, "docs+tests": "kimi/" + kimiModel,
+		"bugs+impl": "kimi/" + kimiModel + ":", "adversarial": "kimi/" + kimiModel + ":",
+		"arch+quality": "kimi/" + kimiModel + ":", "docs+tests": "kimi/" + kimiModel + ":",
 		"synthesis": "claude/opus:high", "verify": "claude/opus:high",
 	}, runners(t, "kimi-only"), "the stages stay on claude: a stage prompt inlines every finding, and kimi takes "+
 		"its prompt in argv, which Windows caps at 32767 characters")

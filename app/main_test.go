@@ -1068,6 +1068,7 @@ func TestRunOpts_runnerFactory(t *testing.T) {
 		}{
 			{"claude", pipeline.RunnerSpec{Executor: "claude"}, &executor.Claude{}},
 			{"codex", pipeline.RunnerSpec{Executor: "codex"}, &executor.Codex{}},
+			{"kimi", pipeline.RunnerSpec{Executor: "kimi"}, &executor.Kimi{}},
 			{"empty defaults to claude", pipeline.RunnerSpec{}, &executor.Claude{}},
 		}
 
@@ -1080,6 +1081,15 @@ func TestRunOpts_runnerFactory(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				assert.IsType(t, tt.want, factory(tt.spec))
 			})
+		}
+
+		// an executor the prompt tree accepts but the factory has no case for would silently run on claude
+		routed := map[string]bool{}
+		for _, tt := range tests {
+			routed[tt.spec.Executor] = true
+		}
+		for _, exe := range prompt.Executors() {
+			assert.True(t, routed[exe], "executor %q has no routing case above", exe)
 		}
 	})
 }

@@ -156,8 +156,7 @@ func (c *Codex) drain(ctx context.Context, r io.Reader, sink EventSink) Result {
 
 // extractJSON pulls the answer out of output that may carry prose around it. Decoding starts at each
 // brace in turn, and an incomplete tail ends the search rather than continuing into it: a nested object
-// inside a truncated answer would otherwise come back looking like the whole answer. Codex runs it over
-// its whole stdout and kimi over one assistant message at a time.
+// inside a truncated answer would otherwise come back looking like the whole answer.
 func extractJSON(raw string) (json.RawMessage, error) {
 	for i, ch := range raw {
 		if ch != '{' {

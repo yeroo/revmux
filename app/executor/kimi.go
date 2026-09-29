@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -197,25 +198,49 @@ func (e kimiLine) retrying() string {
 }
 
 // kimiAnswer walks the assistant messages last to first and takes the first object carrying every key
-// the schema requires. Each message is tried on its own, never concatenated: an earlier status line
-// holding a brace would otherwise be read as the answer. When none carries them, the last message that
-// decodes at all is returned, so the pipeline's own shape check names the mismatch rather than this
-// reporting nothing.
+// the schema requires. Every object in a message is a candidate, not only the first: prose mentioning
+// `struct{}{}` ahead of the answer decodes as `{}`, and stopping there degrades a source that answered.
+// Each message is tried on its own, never concatenated: an earlier status line holding a brace would
+// otherwise be read as the answer. When none carries them, the latest object that decodes at all is
+// returned, so the pipeline's own shape check names the mismatch rather than this reporting nothing.
 func kimiAnswer(contents, required []string) json.RawMessage {
 	var fallback json.RawMessage
 	for _, content := range slices.Backward(contents) {
-		out, err := extractJSON(content)
-		if err != nil {
-			continue
+		objs := jsonObjects(content)
+		for _, obj := range objs {
+			if carriesKeys(obj, required) {
+				return obj
+			}
 		}
-		if fallback == nil {
-			fallback = out
-		}
-		if carriesKeys(out, required) {
-			return out
+		if fallback == nil && len(objs) > 0 {
+			fallback = objs[len(objs)-1]
 		}
 	}
 	return fallback
+}
+
+// jsonObjects is every top-level object in prose, in order. A decoded object is skipped past whole, so
+// the objects nested inside an answer are never candidates of their own, and an incomplete tail ends the
+// search for extractJSON's reason: a nested object in a truncated answer would pass for the answer.
+func jsonObjects(raw string) []json.RawMessage {
+	var out []json.RawMessage
+	for i := 0; i < len(raw); i++ {
+		if raw[i] != '{' {
+			continue
+		}
+		dec := json.NewDecoder(strings.NewReader(raw[i:]))
+		var obj json.RawMessage
+		err := dec.Decode(&obj)
+		if err == nil {
+			out = append(out, obj)
+			i += int(dec.InputOffset()) - 1
+			continue
+		}
+		if errors.Is(err, io.ErrUnexpectedEOF) {
+			break
+		}
+	}
+	return out
 }
 
 // schemaRequired reads the top-level required keys off a stage schema, so the executor tells an answer

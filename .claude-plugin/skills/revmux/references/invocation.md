@@ -36,8 +36,9 @@ revmux --task pr-123 --run 01-initial --no-tui > /tmp/revmux-pr-123.json 2> /tmp
   tty happened to be openable
 
 Timeouts are configurable if a run is genuinely stuck rather than slow: `--idle-timeout` (default
-`2m`) kills and retries an agent that has produced no output for that long, and `--hard-timeout`
-(default `20m`) caps a single attempt. Raising them makes a stalled run take longer to fail, not more
+`2m`) kills and retries an agent that has produced no output for that long — a kimi agent uses
+`--kimi-idle-timeout` (default `6m`) instead, since kimi writes nothing while one model step runs — and
+`--hard-timeout` (default `20m`) caps a single attempt. Raising them makes a stalled run take longer to fail, not more
 likely to succeed.
 
 ## Relay the milestones while it runs
@@ -620,6 +621,8 @@ These also read from the config file, under the same name as the flag:
 | `--auto-exit=<d>` | `auto-exit` | `0s` | close the TUI this long after the report arrives; `0` waits for the reader to quit with `q` or `ctrl+c` |
 | `--codex-sandbox=<mode>` | `codex-sandbox` | `read-only` | sandbox codex agents run their commands under: `read-only`, `workspace-write` or `danger-full-access`. `danger-full-access` is for a container that is itself the isolation boundary, where codex's own bubblewrap sandbox cannot start |
 | `--profile=<name>` | `profile` | `comprehensive` | profile naming the roster to run |
+| `--kimi-bin=<path>` | `kimi-bin` | `kimi` | kimi binary to run; the bare name searches `PATH`, then `~/.kimi-code/bin` |
+| `--kimi-idle-timeout=<d>` | `kimi-idle-timeout` | `6m` | kill and retry a kimi agent after this long with no output, in place of `--idle-timeout` |
 
 `--task` and `--run` are not config keys: a config file naming the round to write would make the same
 command review different context in different directories.

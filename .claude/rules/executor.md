@@ -419,7 +419,9 @@ No successful stream could be recorded while the account was over its usage limi
   otherwise be read as the answer.
 - **Effort has no flag.** A model's supported efforts are declared in `~/.kimi-code/config.toml` and set
   only there. A kimi runner's effort is accepted, reported once as ignored through `EventInfo`, and never
-  passed. `kimi-mixed`'s kimi entries inherit `high` from the profile and report it; `kimi-only` names none.
+  passed. Neither shipped kimi profile names one: both put kimi in the top-level `model:` and name claude
+  per entry and per stage, since an effort a kimi entry inherits from a claude `model:` is recorded in
+  `manifest.json` and the report as if kimi had run at it.
 - **Failure lands on stderr with only the banner on stdout.** A usage-limit run exits 1 with
   `error: failed to run prompt: provider.auth_error: 403 You've reached your 5-hour usage limit. …`.
   Tiering reads the last `error:` line alone — stdout is structured, so there is no prose tail to consult,
